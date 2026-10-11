@@ -1,0 +1,21 @@
+{
+  "name": "eventpass",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @eventpass/web",
+    "build": "npm run build -w @eventpass/web",
+    "lint": "npm run lint -w @eventpass/web",
+    "typecheck": "npm run typecheck -w @eventpass/web",
+    "test": "npm run test -w @eventpass/web",
+    "db:generate": "npm run db:generate -w @eventpass/web",
+    "db:migrate": "npm run db:migrate -w @eventpass/web",
+    "index:poll": "node scripts/poll-index.mjs"
+  },
+  "devDependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  }
+}

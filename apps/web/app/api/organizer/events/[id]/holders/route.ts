@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { authError, requireOrganizer } from "@/server/auth";
+import { failure } from "@/lib/security";
+export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){try{const {organizer}=await requireOrganizer();const {id}=await params;const owns=await db.event.count({where:{id,organizerId:organizer.id}});if(!owns)return failure("Event not found",404);const [tickets,staff]=await Promise.all([db.ticket.findMany({where:{eventId:id},include:{checkIn:true},orderBy:{createdAt:"desc"},take:200}),db.staffPermission.findMany({where:{eventId:id},include:{user:{include:{wallets:true}}}})]);return NextResponse.json({holders:tickets.map(t=>({id:t.id,tokenId:t.tokenId.toString(),wallet:t.ownerWallet,status:t.status,checkedAt:t.checkIn?.checkedAt.toISOString()??null})),staff:staff.map(s=>({id:s.id,address:s.user.wallets[0]?.address,grantedAt:s.grantedAt.toISOString()}))},{headers:{"Cache-Control":"no-store"}})}catch(error){return failure("Holders unavailable",authError(error))}}

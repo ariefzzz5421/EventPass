@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { Ticket } from "lucide-react";
+export function SiteFooter(){return <footer className="site-footer"><div className="container footer-grid"><div><Link href="/" className="brand"><span className="brand-mark"><Ticket size={19}/></span> EventPass</Link><p className="muted" style={{fontSize:13,marginTop:15}}>Own the moment. Powered by Base.</p></div><div className="footer-links"><Link href="/explore">Explore</Link><Link href="/organizer">Organizers</Link><Link href="/tickets">My tickets</Link><a href="https://sepolia.basescan.org" target="_blank" rel="noreferrer">BaseScan ↗</a></div></div></footer>}

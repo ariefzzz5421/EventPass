@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="container page"><div className="page-heading"><span className="eyebrow">EVENTPASS</span><h1>Loading your experience…</h1></div><div className="panel" role="status">Checking the latest events and tickets.</div></main>}

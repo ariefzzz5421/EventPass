@@ -1,0 +1,61 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: eventpass
+          POSTGRES_PASSWORD: eventpass
+          POSTGRES_DB: eventpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U eventpass -d eventpass"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://eventpass:eventpass@localhost:5432/eventpass?schema=public
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      SESSION_SECRET: ci-session-secret-longer-than-thirty-two-characters
+      QR_SIGNING_SECRET: ci-qr-secret-longer-than-thirty-two-characters
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npx prisma migrate deploy
+        working-directory: apps/web
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - run: forge test -vv
+        working-directory: contracts

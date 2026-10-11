@@ -1,0 +1,6 @@
+"use client";
+import Link from "next/link";
+import { Menu, Ticket, X } from "lucide-react";
+import { useState } from "react";
+const links = [{ href: "/explore", label: "Explore events" }, { href: "/tickets", label: "My tickets" }, { href: "/organizer", label: "For organizers" }];
+export function SiteHeader() { const [open, setOpen] = useState(false); return <header className="site-header"><div className="container header-inner"><Link href="/" className="brand" onClick={() => setOpen(false)}><span className="brand-mark"><Ticket size={20}/></span> EventPass</Link><nav className="nav" aria-label="Main navigation">{links.map(x => <Link key={x.href} href={x.href}>{x.label}</Link>)}</nav><div className="header-actions"><Link className="button button-outline desktop-only" href="/organizer">Create an event</Link><Link className="button button-primary desktop-only" href="/tickets">Open app</Link></div><button className="icon-button mobile-menu" type="button" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>{open ? <X size={20}/> : <Menu size={20}/>}</button></div>{open && <nav className="container mobile-links" aria-label="Mobile navigation">{links.map(x => <Link key={x.href} href={x.href} onClick={() => setOpen(false)}>{x.label}</Link>)}</nav>}</header>; }

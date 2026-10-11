@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  PLATFORM_ADMIN
+}
+enum OrganizerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+enum EventStatus {
+  DRAFT
+  PENDING_CHAIN
+  ACTIVE
+  CANCELED
+}
+enum TicketStatus {
+  VALID
+  USED
+  REFUNDED
+}
+enum TransactionStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+model User {
+  id          String @id @default(cuid())
+  displayName String?
+  role        UserRole @default(CUSTOMER)
+  createdAt   DateTime @default(now())
+  wallets     WalletAccount[]
+  sessions    Session[]
+  organizer   OrganizerProfile?
+  purchases   Purchase[]
+  staffRoles  StaffPermission[]
+  checkIns    CheckIn[] @relation("StaffCheckIns")
+  auditLogs   AuditLog[]
+}
+
+model WalletAccount {
+  id        String @id @default(cuid())
+  userId    String
+  address   String @unique @db.VarChar(42)
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model AuthNonce {
+  id        String @id @default(cuid())
+  nonceHash String @unique @db.VarChar(64)
+  address   String @db.VarChar(42)
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([address, expiresAt])
+}
+
+model Session {
+  id        String @id @default(cuid())
+  tokenHash String @unique @db.VarChar(64)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+}
+
+model OrganizerProfile {
+  id        String @id @default(cuid())
+  userId    String @unique
+  name      String
+  bio       String? @db.Text
+  status    OrganizerStatus @default(PENDING)
+  payoutWallet String @db.VarChar(42)
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events    Event[]
+}
+
+model Event {
+  id              String @id @default(cuid())
+  slug            String @unique
+  organizerId     String
+  title           String
+  description     String @db.Text
+  category        String
+  venue           String
+  city            String
+  bannerUrl       String?
+  startsAt        DateTime
+  endsAt          DateTime
+  saleStartsAt    DateTime
+  saleEndsAt      DateTime
+  status          EventStatus @default(DRAFT)
+  chainId         Int @default(84532)
+  contractEventId BigInt?
+  creationTxHash  String? @db.VarChar(66)
+  referenceHash    String? @unique @db.VarChar(66)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  organizer       OrganizerProfile @relation(fields: [organizerId], references: [id])
+  ticketType      TicketType?
+  purchases       Purchase[]
+  tickets         Ticket[]
+  staff           StaffPermission[]
+  @@unique([chainId, contractEventId])
+  @@index([status, startsAt])
+  @@index([category, city, startsAt])
+}
+
+model TicketType {
+  id          String @id @default(cuid())
+  eventId     String @unique
+  priceAtomic BigInt
+  maxSupply   Int
+  soldCount   Int @default(0)
+  event       Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Purchase {
+  id          String @id @default(cuid())
+  eventId     String
+  buyerId     String?
+  buyerWallet String @db.VarChar(42)
+  chainId     Int
+  txHash      String @db.VarChar(66)
+  logIndex    Int
+  amountAtomic BigInt
+  feeAtomic   BigInt
+  blockNumber BigInt
+  blockHash   String @db.VarChar(66)
+  purchasedAt DateTime
+  refundedAt  DateTime?
+  event       Event @relation(fields: [eventId], references: [id])
+  buyer       User? @relation(fields: [buyerId], references: [id])
+  ticket      Ticket?
+  @@unique([chainId, txHash, logIndex])
+  @@index([eventId, purchasedAt])
+  @@index([buyerWallet])
+}
+
+model Ticket {
+  id              String @id @default(cuid())
+  eventId         String
+  purchaseId      String @unique
+  chainId         Int
+  contractAddress String @db.VarChar(42)
+  tokenId         BigInt
+  ownerWallet     String @db.VarChar(42)
+  status          TicketStatus @default(VALID)
+  createdAt       DateTime @default(now())
+  event           Event @relation(fields: [eventId], references: [id])
+  purchase        Purchase @relation(fields: [purchaseId], references: [id])
+  checkIn         CheckIn?
+  qrCredentials   QrCredential[]
+  @@unique([chainId, contractAddress, tokenId])
+  @@index([ownerWallet, status])
+  @@index([eventId, status])
+}
+
+model StaffPermission {
+  id        String @id @default(cuid())
+  eventId   String
+  userId    String
+  grantedAt DateTime @default(now())
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([eventId, userId])
+}
+
+model QrCredential {
+  id        String @id @default(cuid())
+  nonceHash String @unique @db.VarChar(64)
+  ticketId  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  ticket    Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  @@index([ticketId, expiresAt])
+}
+
+model CheckIn {
+  id        String @id @default(cuid())
+  ticketId  String @unique
+  staffId   String
+  checkedAt DateTime @default(now())
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
+  staff     User @relation("StaffCheckIns", fields: [staffId], references: [id])
+  @@index([staffId, checkedAt])
+}
+
+model TransactionRecord {
+  id          String @id @default(cuid())
+  chainId     Int
+  txHash      String @db.VarChar(66)
+  eventId     String?
+  kind        String
+  status      TransactionStatus
+  blockNumber BigInt?
+  blockHash   String? @db.VarChar(66)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@unique([chainId, txHash, kind])
+  @@index([eventId, createdAt])
+}
+
+model IndexedLog {
+  id          String @id @default(cuid())
+  chainId     Int
+  txHash      String @db.VarChar(66)
+  logIndex    Int
+  blockNumber BigInt
+  blockHash   String @db.VarChar(66)
+  eventName   String
+  contractEventId BigInt?
+  tokenId     BigInt?
+  createdAt   DateTime @default(now())
+  @@unique([chainId, txHash, logIndex])
+  @@index([chainId, blockNumber])
+}
+
+model IndexedBlock {
+  id          String @id
+  chainId     Int
+  blockNumber BigInt
+  blockHash   String @db.VarChar(66)
+  @@unique([chainId, blockNumber])
+}
+
+model SyncCheckpoint {
+  id          String @id
+  chainId     Int
+  blockNumber BigInt
+  blockHash   String @db.VarChar(66)
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String @id @default(cuid())
+  actorId   String?
+  action    String
+  targetType String
+  targetId  String
+  detail    Json?
+  createdAt DateTime @default(now())
+  actor     User? @relation(fields: [actorId], references: [id])
+  @@index([targetType, targetId, createdAt])
+}
+
+model RateLimitBucket {
+  id        String @id
+  count     Int @default(0)
+  expiresAt DateTime
+  @@index([expiresAt])
+}

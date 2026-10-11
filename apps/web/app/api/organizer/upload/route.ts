@@ -1,0 +1,8 @@
+import { randomUUID } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { put } from "@vercel/blob";
+import { authError, requireOrganizer } from "@/server/auth";
+import { checkOrigin, failure, rateLimit } from "@/lib/security";
+const MAX_SIZE=5*1024*1024;
+function detectedType(bytes:Uint8Array){if(bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff)return "image/jpeg";if(bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4e&&bytes[3]===0x47)return "image/png";if(String.fromCharCode(...bytes.slice(0,4))==="RIFF"&&String.fromCharCode(...bytes.slice(8,12))==="WEBP")return "image/webp";return null}
+export async function POST(request:NextRequest){if(!checkOrigin(request))return failure("Invalid request origin",403);try{const {user}=await requireOrganizer();if(!process.env.BLOB_READ_WRITE_TOKEN)return failure("Banner storage is not configured",503);if(!await rateLimit(request,"banner-upload",20,60*60_000,user.id))return failure("Too many uploads",429);const form=await request.formData();const file=form.get("file");if(!(file instanceof File)||file.size===0||file.size>MAX_SIZE)return failure("Choose an image under 5 MB");const bytes=new Uint8Array(await file.arrayBuffer());const type=detectedType(bytes);if(!type||type!==file.type)return failure("Only JPEG, PNG, or WebP images are allowed");const extension=type==="image/jpeg"?"jpg":type==="image/png"?"png":"webp";const blob=await put(`banners/${randomUUID()}.${extension}`,Buffer.from(bytes),{access:"public",contentType:type,addRandomSuffix:false});return NextResponse.json({url:blob.url})}catch(error){return failure("Upload failed",authError(error))}}

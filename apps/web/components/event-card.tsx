@@ -1,0 +1,6 @@
+import Link from "next/link";
+import Image from "next/image";
+import { ArrowUpRight, CalendarDays, MapPin } from "lucide-react";
+import { formatUsdc } from "@eventpass/shared";
+import type { PublicEvent } from "@/server/events";
+export function EventCard({ event }: { event: PublicEvent }) { const remaining = event.ticketType ? event.ticketType.maxSupply - event.ticketType.soldCount : 0; return <Link href={`/events/${event.slug}`} className="event-card"><div className="event-banner">{event.bannerUrl ? <Image src={event.bannerUrl} alt="" fill sizes="(max-width: 760px) 100vw, (max-width: 1050px) 50vw, 33vw" style={{objectFit:"cover"}}/> : <span className="banner-pattern">EP</span>}</div><div className="event-card-body"><div><span className="badge">{event.category}</span> {remaining === 0 && <span className="badge badge-red">Sold out</span>}</div><h3>{event.title}</h3><p className="meta"><CalendarDays size={15}/>{new Intl.DateTimeFormat("en", { dateStyle:"medium" }).format(event.startsAt)}</p><p className="meta"><MapPin size={15}/>{event.venue}, {event.city}</p><div className="event-card-footer"><div><span className="muted" style={{fontSize:11}}>FROM</span><br/><strong>{event.ticketType ? formatUsdc(event.ticketType.priceAtomic) : "—"} USDC</strong></div><ArrowUpRight size={19} color="#a9c0ff"/></div></div></Link>; }

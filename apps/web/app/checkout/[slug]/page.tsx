@@ -1,0 +1,7 @@
+import { notFound } from "next/navigation";
+import { formatUsdc } from "@eventpass/shared";
+import { getEvent } from "@/server/events";
+import { WalletProviders } from "@/components/wallet-providers";
+import { CheckoutClient } from "@/components/checkout-client";
+export const dynamic="force-dynamic";
+export default async function CheckoutPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const event=await getEvent(slug);if(!event||event.status!=="ACTIVE"||event.contractEventId===null||!event.ticketType)notFound();return <main className="page container" style={{maxWidth:790}}><div className="page-heading"><span className="eyebrow">SECURE CHECKOUT</span><h1>Complete your ticket</h1><p>{event.title} · {new Intl.DateTimeFormat("en",{dateStyle:"medium",timeStyle:"short"}).format(event.startsAt)}</p></div><div className="panel" style={{marginBottom:20}}><div className="kv"><span>Ticket</span><strong>{event.title}</strong></div><div className="kv"><span>Price</span><strong>{formatUsdc(event.ticketType.priceAtomic)} USDC</strong></div><div className="kv"><span>Network</span><strong>Base Sepolia</strong></div><div className="kv"><span>Platform fee</span><strong>Included in ticket price</strong></div></div><WalletProviders><CheckoutClient eventId={event.contractEventId.toString()} slug={event.slug} priceAtomic={event.ticketType.priceAtomic.toString()}/></WalletProviders></main>}
