@@ -11,3 +11,5 @@ cache/
 broadcast/
 apps/web/public/uploads/
 *.log
+
+.vercel/

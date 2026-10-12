@@ -1,0 +1,4 @@
+.playwright-cli/
+contracts/out/
+contracts/cache/
+**/*.tsbuildinfo
